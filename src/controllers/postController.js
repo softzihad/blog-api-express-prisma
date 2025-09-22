@@ -49,4 +49,12 @@ const createPost = async (req, res) => {
   }
 };
 
+// {
+//     "title": "My Blog Post",
+//     "content": "This is the content of my blog post",
+//     "categoryId": 1,
+//     "published": true
+// }
+
+
 export { createPost };
