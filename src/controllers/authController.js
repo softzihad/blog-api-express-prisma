@@ -79,7 +79,24 @@ const login = async (req, res) => {
 };
 
 const me = async (req, res) => {
-  res.json({ user: req.user });
+  //res.json({ user: req.user });
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    include: { profile: true }
+  });
+  res.json(user);
 };
 
-export { register, login, me };
+// update/create profile (protected)
+const upsertProfile = async (req, res) => {
+  const { bio } = req.body;
+  const userId = req.user.id;
+  const profile = await prisma.profile.upsert({
+    where: { userId },
+    update: { bio },
+    create: { bio, user: { connect: { id: userId } } }
+  });
+  res.json(profile);
+};
+
+export { register, login, me, upsertProfile };
