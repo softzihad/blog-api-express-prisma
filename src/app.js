@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { notFound, errorHandler } from "./middlewares/error.js";
+import { authRouter} from "./routes/auth.js";
+
 
 dotenv.config();
 const app = express();
@@ -13,5 +16,11 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
+
+app.use('/api/auth', authRouter);
+
+
+app.use(notFound);
+app.use(errorHandler);
 
 export default app;
