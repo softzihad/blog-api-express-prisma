@@ -14,6 +14,10 @@ const listCategoriesSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
 });
 
+const updateCategorySchema = z.object({
+  name: z.string().min(1, "name is required")
+});
+
 
 // Create a new category
 const createCategory = async (req, res) => {
@@ -137,8 +141,51 @@ const getCategory = async (req, res) => {
   }
 };
 
+// Update category by ID
+const updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = updateCategorySchema.parse(req.body);
+
+    // Check if category exists
+    const existingCategory = await prisma.category.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!existingCategory) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    // Check if new name already exists (excluding current category)
+    const nameExists = await prisma.category.findFirst({
+      where: {
+        name: data.name,
+        NOT: { id: parseInt(id) }
+      }
+    });
+
+    if (nameExists) {
+      return res.status(400).json({ error: 'Category name already exists' });
+    }
+
+    const updatedCategory = await prisma.category.update({
+      where: { id: parseInt(id) },
+      data
+    });
+
+    res.json(updatedCategory);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.errors.map(e => e.message) });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // API Usage:
 // GET /categories?page=1&limit=5&search=tech&sortBy=name&sortOrder=asc
 // GET /categories/:id
+// PUT /categories/:id
 
-export { createCategory, listCategories, getCategory };
+export { createCategory, listCategories, getCategory, updateCategory };
