@@ -82,7 +82,7 @@ const me = async (req, res) => {
   //res.json({ user: req.user });
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
-    include: { profile: true }
+    include: { profile: true, posts: true }
   });
   res.json(user);
 };
