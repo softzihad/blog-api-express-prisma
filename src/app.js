@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { notFound, errorHandler } from "./middlewares/error.js";
 import { authRouter} from "./routes/auth.js";
 import { categoryRouter } from "./routes/category.js";
+import { postRouter } from "./routes/post.js";
 
 
 dotenv.config();
@@ -18,9 +19,12 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+// Mount routers
 app.use('/auth', authRouter);
 app.use('/api/categories', categoryRouter);
+app.use('/api/posts', postRouter);
 
+// Error Handling Middleware
 app.use(notFound);
 app.use(errorHandler);
 
