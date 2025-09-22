@@ -52,8 +52,7 @@ const listCategories = async (req, res) => {
     const where = search
       ? {
           name: {
-            contains: search,
-            mode: 'insensitive'
+            contains: search
           }
         }
       : {};
