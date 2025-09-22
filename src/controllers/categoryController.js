@@ -106,7 +106,7 @@ const listCategories = async (req, res) => {
 };
 
 // Get single category by ID
-const getSingleCategory = async (req, res) => {
+const getCategory = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -141,4 +141,4 @@ const getSingleCategory = async (req, res) => {
 // GET /categories?page=1&limit=5&search=tech&sortBy=name&sortOrder=asc
 // GET /categories/:id
 
-export { createCategory, listCategories, getSingleCategory };
+export { createCategory, listCategories, getCategory };
