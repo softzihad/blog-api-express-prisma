@@ -32,4 +32,8 @@ const createCategory = async (req, res) => {
 };
 
 
-export { createCategory };
+// list all categories
+
+
+
+export { createCategory, listCategories };
