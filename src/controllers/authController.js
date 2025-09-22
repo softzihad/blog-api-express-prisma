@@ -22,7 +22,7 @@ const generateToken = (userId) => {
   });
 };
 
-export const register = async (req, res) => {
+const register = async (req, res) => {
   try {
     // Validate input
     const data = registerSchema.parse(req.body);
@@ -51,7 +51,7 @@ export const register = async (req, res) => {
   }
 };
 
-export const login = async (req, res) => {
+const login = async (req, res) => {
   try {
     // Validate input
     const data = loginSchema.parse(req.body);
@@ -78,8 +78,8 @@ export const login = async (req, res) => {
   }
 };
 
-export const me = async (req, res) => {
+const me = async (req, res) => {
   res.json({ user: req.user });
 };
 
-//export { register, login, me };
+export { register, login, me };
