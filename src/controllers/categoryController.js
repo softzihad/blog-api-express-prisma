@@ -105,7 +105,40 @@ const listCategories = async (req, res) => {
   }
 };
 
+// Get single category by ID
+const getSingleCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const category = await prisma.category.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        posts: {
+          include: {
+            author: {
+              select: { id: true, name: true, email: true }
+            }
+          }
+        },
+        _count: {
+          select: { posts: true }
+        }
+      }
+    });
+
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    res.json(category);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // API Usage:
 // GET /categories?page=1&limit=5&search=tech&sortBy=name&sortOrder=asc
+// GET /categories/:id
 
-export { createCategory, listCategories };
+export { createCategory, listCategories, getSingleCategory };
