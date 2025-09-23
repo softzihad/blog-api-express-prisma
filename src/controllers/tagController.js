@@ -115,4 +115,39 @@ const listTags = async (req, res) => {
   }
 };
 
-export { createTag, listTags };
+// Get single tag by ID
+const getTag = async (req, res) => {
+  try {
+    // Validate ID param
+    const id  = Number(req.params.id);    
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+
+    // Fetch tag with its posts
+    const tag = await prisma.tag.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        // posts: {
+        //   include: {
+        //     author: {
+        //       select: { id: true, name: true, email: true }
+        //     }
+        //   }
+        // },
+        // _count: {
+        //   select: { posts: true }
+        // }
+      }
+    });
+
+    if (!tag) {
+      return res.status(404).json({ error: 'Tag not found' });
+    }
+
+    res.json(tag);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export { createTag, listTags, getTag };
