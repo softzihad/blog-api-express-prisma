@@ -19,6 +19,10 @@ const listPostsSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
 });
 
+const getPostSchema = z.object({
+  id: z.string().transform(val => parseInt(val))
+});
+
 // Create a new post
 const createPost = async (req, res) => {
   try {
@@ -147,7 +151,41 @@ const listPosts = async (req, res) => {
   }
 };
 
-export { createPost, listPosts };
+// Get a single post by ID
+const getPost = async (req, res) => {
+  try {
+    const parsed = getPostSchema.safeParse(req.params);
+
+    if (!parsed.success) {
+      return res.status(422).json({ errors: parsed.error.flatten() });
+    }
+
+    const { id } = parsed.data;
+
+    const post = await prisma.post.findUnique({
+      where: { id },
+      include: {
+        author: {
+          select: { id: true, name: true, email: true }
+        },
+        category: {
+          select: { id: true, name: true }
+        }
+      }
+    });
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    res.json(post);
+  } catch (error) {
+    console.error('Get post by ID error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export { createPost, listPosts, getPost };
 
 
 // /posts?search=express&category=2&published=true&page=2&limit=20&sortBy=updatedAt&sortOrder=desc
