@@ -9,6 +9,16 @@ const createPostSchema = z.object({
   published: z.boolean().optional().default(false)
 });
 
+const listPostsSchema = z.object({
+  page: z.string().optional().transform(val => val ? parseInt(val) : 1),
+  limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
+  search: z.string().optional(),
+  category: z.string().optional().transform(val => val ? parseInt(val) : undefined),
+  published: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
+  sortBy: z.enum(['createdAt', 'updatedAt', 'title']).optional().default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
+});
+
 // Create a new post
 const createPost = async (req, res) => {
   try {
@@ -58,8 +68,90 @@ const createPost = async (req, res) => {
   }
 };
 
-export { createPost };
+// Get all posts with pagination, search, and ordering
+const listPosts = async (req, res) => {
+  try {
+    const parsed = listPostsSchema.safeParse(req.query);
 
+    if (!parsed.success) {
+      return res.status(422).json({ errors: parsed.error.flatten() });
+    }
+
+    const { page, limit, search, category, published, sortBy, sortOrder } = parsed.data;
+
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
+
+    // Build where clause
+    const where = {};
+
+    // Search functionality
+    if (search) {
+      where.OR = [
+        { title: { contains: search } },
+        { content: { contains: search } }
+      ];
+    }
+
+    // Filter by category
+    if (category) {
+      where.categoryId = category;
+    }
+
+    // Filter by published status
+    if (published !== undefined) {
+      where.published = published;
+    }
+
+    // Build orderBy clause
+    const orderBy = { [sortBy]: sortOrder };
+
+    // Get posts with pagination
+    const [posts, totalCount] = await Promise.all([
+      prisma.post.findMany({
+        where,
+        orderBy,
+        skip: offset,
+        take: limit,
+        include: {
+          author: {
+            select: { id: true, name: true, email: true }
+          },
+          category: {
+            select: { id: true, name: true }
+          }
+        }
+      }),
+      prisma.post.count({ where })
+    ]);
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.json({
+      posts,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
+  } catch (error) {
+    console.error('Get posts error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export { createPost, listPosts };
+
+
+// /posts?search=express&category=2&published=true&page=2&limit=20&sortBy=updatedAt&sortOrder=desc
+  
 // {
 //     "title": "My Blog Post",
 //     "content": "This is the content of my blog post",
