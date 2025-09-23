@@ -14,6 +14,10 @@ const listTagsSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
 });
 
+const updateTagSchema = z.object({
+  name: z.string().min(1, "Tag name is required")
+});
+
 // Create a new tag
 const createTag = async (req, res) => {
   try {
@@ -150,4 +154,54 @@ const getTag = async (req, res) => {
   }
 };
 
-export { createTag, listTags, getTag };
+const updateTag = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+
+    // Validate input
+    const parsed = updateTagSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(422).json({ errors: parsed.error.flatten() });
+    }
+
+    const { name } = parsed.data;
+
+    // Check if tag exists
+    const existingTag = await prisma.tag.findUnique({
+      where: { id: id }
+    });
+
+    if (!existingTag) {
+      return res.status(404).json({ error: 'Tag not found' });
+    }
+
+    // Check if new name already exists (excluding current tag)
+    const nameExists = await prisma.tag.findFirst({
+      where: {
+        name: name,
+        NOT: { id: id }
+      }
+    });
+
+    if (nameExists) {
+      return res.status(400).json({ error: 'Tag name already exists' });
+    }
+
+    // Update tag
+    const updatedTag = await prisma.tag.update({
+      where: { id: id },
+      data: { name }
+    });
+
+    res.json(updatedTag);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.errors.map(e => e.message) });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export { createTag, listTags, getTag, updateTag };
