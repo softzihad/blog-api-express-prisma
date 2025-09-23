@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 // Zod schemas
 const createCategorySchema = z.object({
-  name: z.string().min(1, "name is required")
+  name: z.string().min(1, "Category name is required")
 });
 
 const listCategoriesSchema = z.object({
@@ -15,24 +15,36 @@ const listCategoriesSchema = z.object({
 });
 
 const updateCategorySchema = z.object({
-  name: z.string().min(1, "name is required")
+  name: z.string().min(1, "Category name is required")
 });
 
 
 // Create a new category
 const createCategory = async (req, res) => {
   try {
-    const data = createCategorySchema.parse(req.body);
+    const parsed = createCategorySchema.safeParse(req.body);
+
+    // Validation failed
+    if (!parsed.success) {
+      return res.status(422).json({ errors: parsed.error.flatten() });
+    }
+
+    // Extract name
+    const { name } = parsed.data;
 
     // if category is already exists
     const existingCategory = await prisma.category.findUnique({
-      where: { name: data.name }
+      where: { name: name }
     });
+
     if (existingCategory) {
       return res.status(400).json({ error: 'Category already exists' });
     }
 
-    const category = await prisma.category.create({ data });
+    // Create category
+    const category = await prisma.category.create({ 
+      data: { name }
+    });
     res.status(201).json(category);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -112,8 +124,11 @@ const listCategories = async (req, res) => {
 // Get single category by ID
 const getCategory = async (req, res) => {
   try {
-    const { id } = req.params;
+    // Validate ID param
+    const id  = Number(req.params.id);    
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
 
+    // Fetch category with its posts
     const category = await prisma.category.findUnique({
       where: { id: parseInt(id) },
       include: {
@@ -144,12 +159,20 @@ const getCategory = async (req, res) => {
 // Update category by ID
 const updateCategory = async (req, res) => {
   try {
-    const { id } = req.params;
-    const data = updateCategorySchema.parse(req.body);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+
+    // Validate input
+    const parsed = updateCategorySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(422).json({ errors: parsed.error.flatten() });
+    }
+
+    const { name } = parsed.data;
 
     // Check if category exists
     const existingCategory = await prisma.category.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: id }
     });
 
     if (!existingCategory) {
@@ -159,8 +182,8 @@ const updateCategory = async (req, res) => {
     // Check if new name already exists (excluding current category)
     const nameExists = await prisma.category.findFirst({
       where: {
-        name: data.name,
-        NOT: { id: parseInt(id) }
+        name: name,
+        NOT: { id: id }
       }
     });
 
@@ -168,9 +191,10 @@ const updateCategory = async (req, res) => {
       return res.status(400).json({ error: 'Category name already exists' });
     }
 
+    // Update category
     const updatedCategory = await prisma.category.update({
-      where: { id: parseInt(id) },
-      data
+      where: { id: id },
+      data: { name }
     });
 
     res.json(updatedCategory);
