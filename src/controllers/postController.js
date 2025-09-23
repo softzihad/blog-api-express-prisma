@@ -12,8 +12,16 @@ const createPostSchema = z.object({
 // Create a new post
 const createPost = async (req, res) => {
   try {
-    const data = createPostSchema.parse(req.body);
+    const parsed = createPostSchema.safeParse(req.body);
     const authorId = req.user.id; // From auth middleware
+
+    // Validation failed
+    if (!parsed.success) {
+      return res.status(422).json({ errors: parsed.error.flatten() });
+    }
+
+    // Extract data
+    const { ...data } = parsed.data;
 
     // Check if category exists
     const categoryExists = await prisma.category.findUnique({
@@ -24,6 +32,7 @@ const createPost = async (req, res) => {
       return res.status(400).json({ error: 'Category not found' });
     }
 
+    // Create post
     const post = await prisma.post.create({
       data: {
         ...data,
@@ -49,12 +58,11 @@ const createPost = async (req, res) => {
   }
 };
 
+export { createPost };
+
 // {
 //     "title": "My Blog Post",
 //     "content": "This is the content of my blog post",
 //     "categoryId": 1,
 //     "published": true
 // }
-
-
-export { createPost };
