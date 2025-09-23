@@ -23,6 +23,13 @@ const getPostSchema = z.object({
   id: z.string().transform(val => parseInt(val))
 });
 
+const updatePostSchema = z.object({
+  title: z.string().min(1, "Title is required").optional(),
+  content: z.string().min(1, "Content is required").optional(),
+  categoryId: z.number().int().positive("Valid category ID is required").optional(),
+  published: z.boolean().optional()
+});
+
 // Create a new post
 const createPost = async (req, res) => {
   try {
@@ -185,7 +192,71 @@ const getPost = async (req, res) => {
   }
 };
 
-export { createPost, listPosts, getPost };
+// Update a post
+const updatePost = async (req, res) => {
+  try {
+    const idParsed = getPostSchema.safeParse(req.params);
+    const bodyParsed = updatePostSchema.safeParse(req.body);
+    const authorId = req.user.id;
+
+    if (!idParsed.success) {
+      return res.status(422).json({ errors: idParsed.error.flatten() });
+    }
+
+    if (!bodyParsed.success) {
+      return res.status(422).json({ errors: bodyParsed.error.flatten() });
+    }
+
+    const { id } = idParsed.data;
+    const updateData = bodyParsed.data;
+
+    // Check if post exists and user owns it
+    const existingPost = await prisma.post.findUnique({
+      where: { id }
+    });
+
+    if (!existingPost) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    // Check if user owns the post
+    // if (existingPost.authorId !== authorId) {
+    //   return res.status(403).json({ error: 'You can only update your own posts' });
+    // }
+
+    // If categoryId is being updated, check if category exists
+    if (updateData.categoryId) {
+      const categoryExists = await prisma.category.findUnique({
+        where: { id: updateData.categoryId }
+      });
+
+      if (!categoryExists) {
+        return res.status(400).json({ error: 'Category not found' });
+      }
+    }
+
+    // Update post
+    const updatedPost = await prisma.post.update({
+      where: { id },
+      data: updateData,
+      include: {
+        author: {
+          select: { id: true, name: true, email: true }
+        },
+        category: {
+          select: { id: true, name: true }
+        }
+      }
+    });
+
+    res.json(updatedPost);
+  } catch (error) {
+    console.error('Update post error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export { createPost, listPosts, getPost, updatePost };
 
 
 // /posts?search=express&category=2&published=true&page=2&limit=20&sortBy=updatedAt&sortOrder=desc
@@ -195,4 +266,11 @@ export { createPost, listPosts, getPost };
 //     "content": "This is the content of my blog post",
 //     "categoryId": 1,
 //     "published": true
+// }
+
+
+// {
+//   "title": "Updated Title",
+//   "content": "Updated content",
+//   "published": true
 // }

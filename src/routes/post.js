@@ -1,5 +1,5 @@
 import express from 'express';
-import { createPost, listPosts, getPost } from '../controllers/postController.js';
+import { createPost, listPosts, getPost, updatePost } from '../controllers/postController.js';
 import { authMiddleware }  from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -8,5 +8,6 @@ const router = express.Router();
 router.get('/', authMiddleware, listPosts);
 router.get('/:id', authMiddleware, getPost);
 router.post('/', authMiddleware, createPost);
+router.put('/:id', authMiddleware, updatePost);
 
 export const postRouter = router;
