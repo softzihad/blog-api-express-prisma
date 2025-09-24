@@ -30,6 +30,15 @@ const updatePostSchema = z.object({
   published: z.boolean().optional()
 });
 
+const getPostsByAuthorSchema = z.object({
+  authorId: z.string().transform(val => parseInt(val)),
+  page: z.string().optional().transform(val => val ? parseInt(val) : 1),
+  limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
+  published: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
+  sortBy: z.enum(['createdAt', 'updatedAt', 'title']).optional().default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
+});
+
 // Create a new post
 const createPost = async (req, res) => {
   try {
@@ -256,7 +265,89 @@ const updatePost = async (req, res) => {
   }
 };
 
-export { createPost, listPosts, getPost, updatePost };
+// Get posts by author
+const getPostsByAuthor = async (req, res) => {
+  try {
+    const parsed = getPostsByAuthorSchema.safeParse({
+      ...req.params,
+      ...req.query
+    });
+
+    if (!parsed.success) {
+      return res.status(422).json({ errors: parsed.error.flatten() });
+    }
+
+    const { authorId, page, limit, published, sortBy, sortOrder } = parsed.data;
+
+    // Check if author exists
+    const authorExists = await prisma.user.findUnique({
+      where: { id: authorId },
+      select: { id: true, name: true, email: true }
+    });
+
+    if (!authorExists) {
+      return res.status(404).json({ error: 'Author not found' });
+    }
+
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
+
+    // Build where clause
+    const where = { authorId };
+
+    // Filter by published status
+    if (published !== undefined) {
+      where.published = published;
+    }
+
+    // Build orderBy clause
+    const orderBy = { [sortBy]: sortOrder };
+
+    // Get posts with pagination
+    const [posts, totalCount] = await Promise.all([
+      prisma.post.findMany({
+        where,
+        orderBy,
+        skip: offset,
+        take: limit,
+        include: {
+          author: {
+            select: { id: true, name: true, email: true }
+          },
+          category: {
+            select: { id: true, name: true }
+          }
+        }
+      }),
+      prisma.post.count({ where })
+    ]);
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.json({
+      author: authorExists,
+      posts,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
+  } catch (error) {
+    console.error('Get posts by author error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+
+
+export { createPost, listPosts, getPost, updatePost, getPostsByAuthor };
 
 
 // /posts?search=express&category=2&published=true&page=2&limit=20&sortBy=updatedAt&sortOrder=desc
@@ -274,3 +365,7 @@ export { createPost, listPosts, getPost, updatePost };
 //   "content": "Updated content",
 //   "published": true
 // }
+
+
+// Usage example: GET
+//  /posts/author/1?published=true&page=1&limit=10&sortBy=createdAt&sortOrder=desc
