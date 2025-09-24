@@ -425,7 +425,7 @@ export { createPost, listPosts, getPost, updatePost, getPostsByAuthor };
 // }
 
 
-// Usage example: GET
+// Usage example to get post by author: GET
 //  /posts/author/1?published=true&page=1&limit=10&sortBy=createdAt&sortOrder=desc
 
 
