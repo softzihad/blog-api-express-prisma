@@ -6,7 +6,8 @@ const createPostSchema = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Content is required"),
   categoryId: z.number().int().positive("Valid category ID is required"),
-  published: z.boolean().optional().default(false)
+  published: z.boolean().optional().default(false),
+  tagIds: z.array(z.number().int().positive()).optional().default([])
 });
 
 const listPostsSchema = z.object({
@@ -51,7 +52,7 @@ const createPost = async (req, res) => {
     }
 
     // Extract data
-    const { ...data } = parsed.data;
+    const { tagIds, ...data } = parsed.data;
 
     // Check if category exists
     const categoryExists = await prisma.category.findUnique({
@@ -62,17 +63,38 @@ const createPost = async (req, res) => {
       return res.status(400).json({ error: 'Category not found' });
     }
 
+    // Check if all tags exist
+    if (tagIds.length > 0) {
+      const existingTags = await prisma.tag.findMany({
+        where: { id: { in: tagIds } }
+      });
+
+      if (existingTags.length !== tagIds.length) {
+        const foundTagIds = existingTags.map(tag => tag.id);
+        const missingTagIds = tagIds.filter(id => !foundTagIds.includes(id));
+        return res.status(400).json({
+          error: `Tags not found with IDs: ${missingTagIds.join(', ')}`
+        });
+      }
+    }
+
     // Create post
     const post = await prisma.post.create({
       data: {
         ...data,
-        authorId
+        authorId,
+        tags: {
+          connect: tagIds.map(id => ({ id }))
+        }
       },
       include: {
         author: {
           select: { id: true, name: true, email: true }
         },
         category: {
+          select: { id: true, name: true }
+        },
+        tags: {
           select: { id: true, name: true }
         }
       }
@@ -357,7 +379,8 @@ export { createPost, listPosts, getPost, updatePost, getPostsByAuthor };
 //     "title": "My Blog Post",
 //     "content": "This is the content of my blog post",
 //     "categoryId": 1,
-//     "published": true
+//     "published": true,
+//     "tagIds": [1, 2, 3]
 // }
 
 
