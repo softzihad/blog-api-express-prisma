@@ -28,7 +28,8 @@ const updatePostSchema = z.object({
   title: z.string().min(1, "Title is required").optional(),
   content: z.string().min(1, "Content is required").optional(),
   categoryId: z.number().int().positive("Valid category ID is required").optional(),
-  published: z.boolean().optional()
+  published: z.boolean().optional(),
+  tagIds: z.array(z.number().int().positive()).optional()
 });
 
 const getPostsByAuthorSchema = z.object({
@@ -245,7 +246,7 @@ const updatePost = async (req, res) => {
     }
 
     const { id } = idParsed.data;
-    const updateData = bodyParsed.data;
+    const { tagIds, ...updateData } = bodyParsed.data;
 
     // Check if post exists and user owns it
     const existingPost = await prisma.post.findUnique({
@@ -272,15 +273,42 @@ const updatePost = async (req, res) => {
       }
     }
 
+    // If tagIds are being updated, check if all tags exist
+    if (tagIds !== undefined && tagIds.length > 0) {
+      const existingTags = await prisma.tag.findMany({
+        where: { id: { in: tagIds } }
+      });
+
+      if (existingTags.length !== tagIds.length) {
+        const foundTagIds = existingTags.map(tag => tag.id);
+        const missingTagIds = tagIds.filter(id => !foundTagIds.includes(id));
+        return res.status(400).json({
+          error: `Tags not found with IDs: ${missingTagIds.join(', ')}`
+        });
+      }
+    }
+
+    // Prepare update data with tags
+    const postUpdateData = { ...updateData };
+
+    if (tagIds !== undefined) {
+      postUpdateData.tags = {
+        set: tagIds.map(id => ({ id }))
+      };
+    }
+
     // Update post
     const updatedPost = await prisma.post.update({
       where: { id },
-      data: updateData,
+      data: postUpdateData,
       include: {
         author: {
           select: { id: true, name: true, email: true }
         },
         category: {
+          select: { id: true, name: true }
+        },
+        tags: {
           select: { id: true, name: true }
         }
       }
@@ -399,3 +427,21 @@ export { createPost, listPosts, getPost, updatePost, getPostsByAuthor };
 
 // Usage example: GET
 //  /posts/author/1?published=true&page=1&limit=10&sortBy=createdAt&sortOrder=desc
+
+
+// Update tags:
+//   {
+//     "title": "Updated Title",
+//     "tagIds": [1, 2, 4]
+//   }
+
+//   Remove all tags:
+//   {
+//     "title": "Updated Title",
+//     "tagIds": []
+//   }
+
+//   Update without changing tags:
+//   {
+//     "title": "Updated Title"
+//   }
