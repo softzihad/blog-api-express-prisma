@@ -277,6 +277,7 @@ const getPostsByAuthor = async (req, res) => {
       return res.status(422).json({ errors: parsed.error.flatten() });
     }
 
+    // Extract data
     const { authorId, page, limit, published, sortBy, sortOrder } = parsed.data;
 
     // Check if author exists
