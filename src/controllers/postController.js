@@ -161,6 +161,9 @@ const listPosts = async (req, res) => {
           },
           category: {
             select: { id: true, name: true }
+          },
+          tags: {
+            select: { id: true, name: true }
           }
         }
       }),
@@ -207,6 +210,9 @@ const getPost = async (req, res) => {
           select: { id: true, name: true, email: true }
         },
         category: {
+          select: { id: true, name: true }
+        },
+        tags: {
           select: { id: true, name: true }
         }
       }
