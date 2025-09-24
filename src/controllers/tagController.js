@@ -82,12 +82,12 @@ const listTags = async (req, res) => {
       orderBy,
       skip,
       take: limit,
-    //   include: {
-    //     posts: true,
-    //     _count: {
-    //       select: { posts: true }
-    //     }
-    //   }
+      include: {
+        posts: true,
+        _count: {
+          select: { posts: true }
+        }
+      }
     });
 
     // Get total count for pagination
@@ -130,16 +130,16 @@ const getTag = async (req, res) => {
     const tag = await prisma.tag.findUnique({
       where: { id: parseInt(id) },
       include: {
-        // posts: {
-        //   include: {
-        //     author: {
-        //       select: { id: true, name: true, email: true }
-        //     }
-        //   }
-        // },
-        // _count: {
-        //   select: { posts: true }
-        // }
+        posts: {
+          include: {
+            author: {
+              select: { id: true, name: true, email: true }
+            }
+          }
+        },
+        _count: {
+          select: { posts: true }
+        }
       }
     });
 
