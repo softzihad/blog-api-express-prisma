@@ -154,6 +154,7 @@ const getTag = async (req, res) => {
   }
 };
 
+// Update single tag by ID
 const updateTag = async (req, res) => {
   try {
     const id = Number(req.params.id);
