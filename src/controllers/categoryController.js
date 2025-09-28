@@ -45,7 +45,7 @@ const createCategory = async (req, res) => {
     const category = await prisma.category.create({ 
       data: { name }
     });
-    res.status(201).json(category);
+    res.status(201).json({message: "Product created successfully", category});
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ errors: error.errors.map(e => e.message) });
